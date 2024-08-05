@@ -36,9 +36,6 @@ jobs:
       - name: Build package
         run: |
           poetry build
-          
-      - name: List files in dist directory
-        run: ls -al && ls -al ./dist
         
       - name: Create Release
         uses: softprops/action-gh-release@v2
