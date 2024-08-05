@@ -48,3 +48,6 @@ nosetests.xml
 # Ignore logs
 *.log
 *.txt
+
+# Ignore internal scripts
+scripts/
