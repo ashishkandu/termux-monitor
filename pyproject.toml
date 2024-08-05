@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "termux-monitor"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
 authors = ["Ashish Kandu <ashishkandu43@gmail.com>"]
 readme = "README.md"
@@ -8,9 +8,13 @@ packages = [{include = "termux_monitor", from = "src"}]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.8"
 requests = "^2.32.3"
+click = "^8.1.7"
 
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.2"
 
 [build-system]
 requires = ["poetry-core"]
@@ -22,3 +26,6 @@ url = "https://pypi.github.com/ashishkandu"
 
 [tool.poetry.publish]
 repository = "github"
+
+[tool.poetry.scripts]
+termux-monitor = "termux_monitor.cli:main"
