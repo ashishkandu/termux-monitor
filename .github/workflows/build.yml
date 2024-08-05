@@ -39,5 +39,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          poetry config repositories.github.url https://pypi.pkg.github.com/ashishkandu/termux-monitor
           poetry config pypi-token.github ${{ secrets.GITHUB_TOKEN }}
           poetry publish -r github
