@@ -7,10 +7,17 @@ readme = "README.md"
 packages = [{include = "termux_monitor", from = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.8"
 requests = "^2.32.3"
+click = "^8.1.7"
 
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.2"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+termux-monitor = "termux_monitor.cli:main"

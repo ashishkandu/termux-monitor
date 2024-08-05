@@ -1,0 +1,50 @@
+# Ignore virtual environment directories
+venv/
+__pycache__/
+
+# Ignore compiled Python files
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore editor swap files
+*.swp
+*.swo
+
+# Ignore IDE-specific files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.ascx
+*.csproj
+*.user
+*.csproj.user
+*.csproj.vspscc
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.cache
+*.vspscc
+*.vssscc
+*.scc
+
+# Ignore build artifacts
+build/
+dist*/
+*.egg-info/
+*.egg
+
+# Ignore test and coverage reports
+htmlcov/
+.coverage
+.tox/
+coverage.xml
+nosetests.xml
+.hypothesis/
+
+# Ignore logs
+*.log
+*.txt
