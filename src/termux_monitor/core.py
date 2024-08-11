@@ -4,9 +4,22 @@ import time
 from typing import Dict, List, Optional
 
 import requests
-from requests.exceptions import RequestException, Timeout
+from requests.exceptions import ConnectionError, RequestException, Timeout
 
 from .config import GetCountryConfig, TelephonyConfig, WifiConfig
+
+
+def is_internet_connected(host="8.8.8.8", timeout=3):
+    try:
+        subprocess.run(
+            ["ping", "-c", "1", "-W", str(timeout), host],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return True
+    except subprocess.CalledProcessError:
+        return False
 
 
 def restart_wifi(delay=WifiConfig.DELAY) -> bool:
@@ -38,6 +51,8 @@ def get_country(
     max_retries=GetCountryConfig.MAX_RETRIES,
     timeout=GetCountryConfig.TIMEOUT,
     url=GetCountryConfig.URL,
+    backoff_factor=1,  # initial backoff delay in seconds
+    max_backoff=32,  # maximum backoff delay in seconds
 ) -> Optional[str]:
     """
     Retrieves the country based on the IP address.
@@ -46,34 +61,48 @@ def get_country(
         max_retries (int): Maximum number of retries in case of API failure. Defaults to GetCountryConfig.MAX_RETRIES.
         timeout (int): Timeout in seconds for the API request. Defaults to GetCountryConfig.TIMEOUT.
         url (str): URL for the API request. Defaults to GetCountryConfig.URL.
+        backoff_factor (int): Initial backoff delay in seconds. Defaults to 1.
+        max_backoff (int): Maximum backoff delay in seconds. Defaults to 32.
 
     Returns:
         str: The country name if retrieved successfully, otherwise None.
     """
-    country = None
-    retries = 0
 
-    while retries < max_retries:
+    if not is_internet_connected():
+        return None
+
+    retry_count = 0
+    backoff_delay = backoff_factor
+
+    while retry_count < max_retries:
         try:
-            # Set timeout for the API request
             response = requests.get(url, timeout=timeout)
             response.raise_for_status()  # Raises an HTTPError if the HTTP request returned an unsuccessful status code
             data = response.json()
             country = data.get("country")
-            break
-        except Timeout as e:
-            print(f"Timeout error: {e}")
-            retries += 1
-            time.sleep(1)  # Wait for 1 second before retrying
+            return country
+        except (Timeout, ConnectionError) as e:
+            # Network errors, retry with backoff
+            print(f"Network error: {e}")
+            time.sleep(backoff_delay)
+            backoff_delay = min(backoff_delay * 2, max_backoff)
+            retry_count += 1
         except RequestException as e:
+            # Other request errors, log and return None
             print(f"Request error: {e}")
-            retries += 1
-            time.sleep(1)  # Wait for 1 second before retrying
+            return None
+        except json.JSONDecodeError as e:
+            # JSON decoding error, log and return None
+            print(f"JSON decoding error: {e}")
+            return None
         except Exception as e:
-            print(f"An error occurred: {e}")
-            break
+            # Unexpected error, log and return None
+            print(f"Unexpected error: {e}")
+            return None
 
-    return country
+    # Max retries exceeded, return None
+    print("Max retries exceeded")
+    return None
 
 
 def get_telephony_device_info() -> Optional[Dict[str, str]]:
@@ -163,6 +192,9 @@ def check_and_restart_wifi() -> bool:
         else True
     ):
         country = get_country()
+        if not country:
+            print("Failed to retrieve country. Possibly internet is down.")
+            return False
         if country == "IN":
             print(
                 f"Network operator is not {TelephonyConfig.TARGET_OPERATOR_NAME} but country is 'IN'. Restarting Wi-Fi."
