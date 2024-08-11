@@ -3,19 +3,43 @@ import logging
 import subprocess
 from unittest.mock import MagicMock, patch
 
+import pytest
 from requests.exceptions import RequestException, Timeout
 
 from src.termux_monitor.config import GetCountryConfig, TelephonyConfig
-from src.termux_monitor.core import (
-    get_country,
-    get_notifications,
-    get_telephony_device_info,
-    is_network_operator_name_as_desired,
-    is_network_up,
-    restart_wifi,
-)
 
-logging.disable(100)
+
+def lazy_imports():
+    global \
+        get_country, \
+        get_notifications, \
+        get_telephony_device_info, \
+        is_network_operator_name_as_desired, \
+        is_network_up, \
+        restart_wifi
+    from src.termux_monitor.core import (
+        get_country,
+        get_notifications,
+        get_telephony_device_info,
+        is_network_operator_name_as_desired,
+        is_network_up,
+        restart_wifi,
+    )
+
+
+class MockLoggerFactory(logging.Handler):
+    @staticmethod
+    def get_logger(name: str):
+        logging.disable(100)
+        return logging.getLogger("test")
+
+
+@pytest.fixture(autouse=True)
+def setup_and_teardown():
+    with patch("src.termux_monitor.tglogging.LoggerFactory", new=MockLoggerFactory):
+        # Import modules after mocking is set up
+        lazy_imports()
+        yield
 
 
 class TestRestartWifi:
