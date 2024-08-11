@@ -21,6 +21,33 @@ DEFAULT_LOG_PATH = (
 )
 
 
+class CustomFormatter(logging.Formatter):
+    def format(self, record):
+        # Ensure the message is formatted
+        record.message = record.getMessage()
+
+        # Format time if needed
+        if self.usesTime():
+            record.asctime = self.formatTime(record, self.datefmt)
+
+        # Format the log message
+        s = self.formatMessage(record)
+
+        # Include exception information if needed (but handle it manually in the format string)
+        if record.exc_info:
+            # Only format and append the exception if it isn't already included in the message
+            if not record.exc_text:
+                record.exc_text = self.formatException(record.exc_info)
+
+        # Include stack info if needed
+        if record.stack_info:
+            if s[-1:] != "\n":
+                s = s + "\n"
+            s = s + self.formatStack(record.stack_info)
+
+        return s
+
+
 class TelegramHandler(logging.Handler):
     def __init__(
         self, bot_token: Optional[str], chat_id: Optional[str], level=logging.NOTSET
@@ -30,13 +57,22 @@ class TelegramHandler(logging.Handler):
         super().__init__(level)
         self.bot_token = bot_token
         self.chat_id = chat_id
+        self.error_formatter = CustomFormatter(
+            "<b>%(levelname)s</b>\n<em>🧩 %(name)s.%(funcName)s</em>\n\n<code>%(message)s</code>\n\n<em>Stack Trace:</em>\n<code>%(exc_text)s</code>\n\n🕒 <code>%(asctime)s</code>"
+        )
 
     def emit(self, record):
         func_name = getattr(record, "funcName", "")
         if func_name in ("<module>", ""):
             setattr(record, "funcName", record.module)
-        log_entry = self.format(record)
-        emoji_log_entry = self.prefix_message_with_emoji(record.levelname, log_entry)
+        if record.exc_text:
+            formatted_record = self.error_formatter.format(record)
+        else:
+            formatted_record = self.format(record)
+        # log_entry = self.format(record)
+        emoji_log_entry = self.prefix_message_with_emoji(
+            record.levelname, formatted_record
+        )
         self.send_telegram_message(emoji_log_entry)
 
     def prefix_message_with_emoji(self, levelname, message):
