@@ -4,16 +4,8 @@ from pathlib import Path
 from typing import Optional
 
 import requests
-from dotenv import load_dotenv
 
 from .config import Conifg, LoggingConfig
-
-# Load environment variables
-if Conifg.ENV == "development":
-    load_dotenv()
-else:
-    load_dotenv(dotenv_path=Path.home() / ".env")
-
 
 # Define custom logging levels with emojis
 DEBUG_EMOJI = "🐛🔍"

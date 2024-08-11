@@ -1,5 +1,10 @@
 import os
 
+from dotenv import find_dotenv, load_dotenv
+
+env_file_path = find_dotenv()
+load_dotenv(env_file_path)
+
 
 class Conifg:
     ENV = os.getenv("ENV", "production")

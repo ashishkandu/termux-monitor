@@ -7,6 +7,9 @@ import requests
 from requests.exceptions import ConnectionError, RequestException, Timeout
 
 from .config import GetCountryConfig, TelephonyConfig, WifiConfig
+from .tglogging import LoggerFactory
+
+logger = LoggerFactory.get_logger("termux_monitor.core")
 
 
 def is_internet_connected(host="8.8.8.8", timeout=3):
@@ -39,11 +42,11 @@ def restart_wifi(delay=WifiConfig.DELAY) -> bool:
         return True
     except subprocess.CalledProcessError as e:
         error_message = f"Error restarting Wi-Fi: {e}"
-        print(error_message)
+        logger.exception(error_message)
         return False
     except subprocess.TimeoutExpired as e:
         error_message = f"Timeout expired while restarting Wi-Fi: {e}"
-        print(error_message)
+        logger.exception(error_message)
         return False
 
 
@@ -83,25 +86,25 @@ def get_country(
             return country
         except (Timeout, ConnectionError) as e:
             # Network errors, retry with backoff
-            print(f"Network error: {e}")
+            logger.warning(f"Network error: {e}")
             time.sleep(backoff_delay)
             backoff_delay = min(backoff_delay * 2, max_backoff)
             retry_count += 1
         except RequestException as e:
             # Other request errors, log and return None
-            print(f"Request error: {e}")
+            logger.exception(f"Request error: {e}")
             return None
         except json.JSONDecodeError as e:
             # JSON decoding error, log and return None
-            print(f"JSON decoding error: {e}")
+            logger.exception(f"JSON decoding error: {e}")
             return None
         except Exception as e:
             # Unexpected error, log and return None
-            print(f"Unexpected error: {e}")
+            logger.exception(f"Unexpected error: {e}")
             return None
 
     # Max retries exceeded, return None
-    print("Max retries exceeded")
+    logger.error("Max retries exceeded")
     return None
 
 
@@ -116,10 +119,10 @@ def get_telephony_device_info() -> Optional[Dict[str, str]]:
         device_info = json.loads(result.stdout)
         return device_info
     except subprocess.CalledProcessError as e:
-        print(f"Error executing command: {e}")
+        logger.exception(f"Error executing command: {e}")
         return None
     except json.JSONDecodeError as e:
-        print(f"Error decoding JSON: {e}")
+        logger.exception(f"Error decoding JSON: {e}")
         return None
 
 
@@ -148,10 +151,10 @@ def get_notifications() -> Optional[List[Dict[str, str]]]:
         notifications = json.loads(result.stdout)
         return notifications
     except json.JSONDecodeError as e:
-        print(f"Error decoding JSON: {e}")
+        logger.exception(f"Error decoding JSON: {e}")
         return None
     except Exception as e:
-        print(f"Error retrieving notifications: {e}")
+        logger.exception(f"Error retrieving notifications: {e}")
         return None
 
 
@@ -171,7 +174,7 @@ def is_network_up(notifications: List[Dict[str, str]]) -> bool:
         if notification.get("packageName") == "com.android.phone":
             content = notification.get("content", "").lower()
             if "no service" in content or "unavailable" in content:
-                # log the notification
+                logger.info(notification)
                 return False
 
     return True
@@ -180,7 +183,7 @@ def is_network_up(notifications: List[Dict[str, str]]) -> bool:
 def check_and_restart_wifi() -> bool:
     device_info = get_telephony_device_info()
     if not device_info:
-        print("Failed to retrieve device info.")
+        logger.error("Failed to retrieve device info.")
         return False
 
     notifications = get_notifications()
@@ -193,19 +196,19 @@ def check_and_restart_wifi() -> bool:
     ):
         country = get_country()
         if not country:
-            print("Failed to retrieve country. Possibly internet is down.")
+            logger.critical("Failed to retrieve country. Possibly internet is down.")
             return False
         if country == "IN":
-            print(
+            logger.info(
                 f"Network operator is not {TelephonyConfig.TARGET_OPERATOR_NAME} but country is 'IN'. Restarting Wi-Fi."
             )
             return restart_wifi()
         else:
-            print("Country is not 'IN'. Wi-Fi will not be restarted.")
+            logger.critical("Country is not 'IN'. Please check VPN Connection.")
             return False
 
     else:
-        print(
+        logger.debug(
             f"Network operator is {TelephonyConfig.TARGET_OPERATOR_NAME}. No action needed."
         )
         return False
