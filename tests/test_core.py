@@ -1,4 +1,5 @@
 import json
+import logging
 import subprocess
 from unittest.mock import MagicMock, patch
 
@@ -13,6 +14,8 @@ from src.termux_monitor.core import (
     is_network_up,
     restart_wifi,
 )
+
+logging.disable(100)
 
 
 class TestRestartWifi:
