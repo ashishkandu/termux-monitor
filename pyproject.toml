@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "termux-monitor"
-version = "1.0.0"
+version = "v1.1.0"
 description = ""
 authors = ["Ashish Kandu <ashishkandu43@gmail.com>"]
 readme = "README.md"
