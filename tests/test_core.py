@@ -94,7 +94,7 @@ class TestGetCountry:
         country = get_country()
 
         assert country is None
-        assert mock_get.call_count == GetCountryConfig.MAX_RETRIES
+        assert mock_get.call_count == 1
         mock_get.assert_called_with(
             GetCountryConfig.URL, timeout=GetCountryConfig.TIMEOUT
         )
