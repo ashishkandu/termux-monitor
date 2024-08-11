@@ -51,3 +51,6 @@ nosetests.xml
 
 # Ignore internal scripts
 scripts/
+
+# Ignore .env files
+.env
