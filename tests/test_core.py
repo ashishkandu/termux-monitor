@@ -42,6 +42,36 @@ def setup_and_teardown():
         yield
 
 
+def lazy_imports():
+    global \
+        get_country, \
+        get_notifications, \
+        get_telephony_device_info, \
+        is_network_operator_name_as_desired, \
+        is_network_up, \
+        restart_wifi
+
+    from src.termux_monitor.core import (
+        get_country,
+        get_notifications,
+        get_telephony_device_info,
+        is_network_operator_name_as_desired,
+        is_network_up,
+        restart_wifi,
+    )
+
+
+@pytest.fixture(autouse=True)
+def setup_and_teardown():
+    with patch(
+        "src.termux_monitor.tglogging.LoggerFactory.get_logger",
+        return_value=logging.getLogger("test"),
+    ):
+        # Import modules after mocking is set up
+        lazy_imports()
+        yield
+
+
 class TestRestartWifi:
     @patch("subprocess.run")
     @patch("time.sleep")
