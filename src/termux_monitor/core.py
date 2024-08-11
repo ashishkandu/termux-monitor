@@ -1,6 +1,7 @@
 import json
 import subprocess
 import time
+from typing import Dict, List, Optional
 
 import requests
 from requests.exceptions import RequestException, Timeout
@@ -8,7 +9,7 @@ from requests.exceptions import RequestException, Timeout
 from .config import GetCountryConfig, TelephonyConfig, WifiConfig
 
 
-def restart_wifi(delay=WifiConfig.DELAY):
+def restart_wifi(delay=WifiConfig.DELAY) -> bool:
     """
     Restart the Wi-Fi connection.
 
@@ -37,7 +38,7 @@ def get_country(
     max_retries=GetCountryConfig.MAX_RETRIES,
     timeout=GetCountryConfig.TIMEOUT,
     url=GetCountryConfig.URL,
-):
+) -> Optional[str]:
     """
     Retrieves the country based on the IP address.
 
@@ -75,7 +76,7 @@ def get_country(
     return country
 
 
-def get_telephony_device_info():
+def get_telephony_device_info() -> Optional[Dict[str, str]]:
     """
     Executes the termux-telephony-deviceinfo command and returns the parsed JSON data.
     """
@@ -93,7 +94,7 @@ def get_telephony_device_info():
         return None
 
 
-def is_network_operator_name_as_desired(device_info):
+def is_network_operator_name_as_desired(device_info: Dict[str, str]) -> bool:
     """
     Checks if the network_operator_name is equal to TelephonyConfig.TARGET_OPERATOR_NAME.
     """
@@ -104,13 +105,63 @@ def is_network_operator_name_as_desired(device_info):
     return False
 
 
-def check_and_restart_wifi():
+def get_notifications() -> Optional[List[Dict[str, str]]]:
+    """
+    Retrieves a list of notifications from the termux-notification-list command.
+
+    Returns:
+        Optional[List[Dict[str, str]]]: A list of dictionaries containing notification data, or None if an error occurs.
+    """
+    try:
+        result = subprocess.run(
+            ["termux-notification-list"], capture_output=True, text=True
+        )
+        notifications = json.loads(result.stdout)
+        return notifications
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON: {e}")
+        return None
+    except Exception as e:
+        print(f"Error retrieving notifications: {e}")
+        return None
+
+
+def is_network_up(notifications: List[Dict[str, str]]) -> bool:
+    """
+    Checks if the network is up based on the given notifications.
+
+    Args:
+        notifications (List[Dict[str, str]]): A list of dictionaries representing notifications.
+            Each dictionary contains information about a notification, including the package name and content.
+
+    Returns:
+        bool: True if there are no notifications related to the com.android.phone package with content containing
+            "no service" or "unavailable", False otherwise.
+    """
+    for notification in notifications:
+        if notification.get("packageName") == "com.android.phone":
+            content = notification.get("content", "").lower()
+            if "no service" in content or "unavailable" in content:
+                # log the notification
+                return False
+
+    return True
+
+
+def check_and_restart_wifi() -> bool:
     device_info = get_telephony_device_info()
     if not device_info:
         print("Failed to retrieve device info.")
         return False
 
-    if not is_network_operator_name_as_desired(device_info):
+    notifications = get_notifications()
+
+    if not (
+        is_network_operator_name_as_desired(device_info)
+        and is_network_up(notifications)
+        if notifications
+        else True
+    ):
         country = get_country()
         if country == "IN":
             print(

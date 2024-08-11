@@ -1,14 +1,16 @@
 import json
 import subprocess
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from requests.exceptions import RequestException, Timeout
 
 from src.termux_monitor.config import GetCountryConfig, TelephonyConfig
 from src.termux_monitor.core import (
     get_country,
+    get_notifications,
     get_telephony_device_info,
     is_network_operator_name_as_desired,
+    is_network_up,
     restart_wifi,
 )
 
@@ -134,3 +136,68 @@ class TestTelephony:
         device_info = {"network_operator_name": "Other"}
         result = is_network_operator_name_as_desired(device_info)
         assert not result
+
+
+class TestGetNotification:
+    example_notification = """[{
+    "id": 6,
+    "tag": "8",
+    "key": "-1|com.android.phone|6|8|1001",
+    "group": "",
+    "packageName": "com.android.phone",
+    "title": "No service",
+    "content": "Selected network (Operator 4G) unavailable",
+    "when": "2024-08-11 08:08:01"
+  }]"""
+
+    @patch("subprocess.run")
+    def test_successful_execution(self, mock_run):
+        mock_run.return_value = MagicMock(
+            stdout=TestGetNotification.example_notification
+        )
+        notifications = get_notifications()
+        assert notifications == json.loads(TestGetNotification.example_notification)
+
+    @patch("subprocess.run")
+    def test_failed_execution(self, mock_run):
+        mock_run.side_effect = Exception("Mocked exception")
+        notifications = get_notifications()
+        assert notifications is None
+
+    @patch("subprocess.run")
+    def test_json_decoding_error(self, mock_run):
+        mock_run.return_value = MagicMock(stdout="Invalid JSON")
+        notifications = get_notifications()
+        assert notifications is None
+
+
+class TestIsNetworkUp:
+    def test_empty_notifications(self):
+        assert is_network_up([])
+
+    def test_no_com_android_phone_notifications(self):
+        notifications = [{"packageName": "other"}]
+        assert is_network_up(notifications)
+
+    def test_com_android_phone_notification_no_content(self):
+        notifications = [{"packageName": "com.android.phone"}]
+        assert is_network_up(notifications)
+
+    def test_com_android_phone_notification_network_issues(self):
+        notifications = [
+            {
+                "packageName": "com.android.phone",
+                "content": "Selected network (Operator 4G) unavailable",
+            }
+        ]
+        assert not is_network_up(notifications)
+
+    def test_multiple_notifications_network_issues(self):
+        notifications = [
+            {"packageName": "other"},
+            {
+                "packageName": "com.android.phone",
+                "content": "Selected network (Operator 4G) unavailable",
+            },
+        ]
+        assert not is_network_up(notifications)
