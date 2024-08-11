@@ -56,9 +56,10 @@ class TestRestartWifi:
         assert not result
 
 
+@patch("src.termux_monitor.core.is_internet_connected", return_value=True)
 class TestGetCountry:
     @patch("src.termux_monitor.core.requests.get")
-    def test_get_country_success(self, mock_get):
+    def test_get_country_success(self, mock_get, mock_is_connected):
         mock_response = mock_get.return_value
         mock_response.json.return_value = {"country": "US"}
 
@@ -73,7 +74,7 @@ class TestGetCountry:
 
     @patch("src.termux_monitor.core.requests.get")
     @patch("time.sleep")
-    def test_get_country_timeout(self, mock_sleep, mock_get):
+    def test_get_country_timeout(self, mock_sleep, mock_get, mock_is_connected):
         mock_sleep.return_value = None
         mock_get.side_effect = Timeout
 
@@ -87,7 +88,9 @@ class TestGetCountry:
 
     @patch("src.termux_monitor.core.requests.get")
     @patch("time.sleep")
-    def test_get_country_request_exception(self, mock_sleep, mock_get):
+    def test_get_country_request_exception(
+        self, mock_sleep, mock_get, mock_is_connected
+    ):
         mock_sleep.return_value = None
         mock_get.side_effect = RequestException
 
@@ -100,7 +103,7 @@ class TestGetCountry:
         )
 
     @patch("src.termux_monitor.core.requests.get")
-    def test_get_country_api_failure(self, mock_get):
+    def test_get_country_api_failure(self, mock_get, mock_is_connected):
         mock_response = mock_get.return_value
         mock_response.json.side_effect = ValueError
 
